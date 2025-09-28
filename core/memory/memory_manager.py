@@ -1,5 +1,8 @@
 import os
 import json
+import atexit
+import signal
+import sys
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
@@ -25,10 +28,13 @@ class Conversation:
 class MemoryManager:
     """Manages conversation memory and context for the chatbot"""
     
-    def __init__(self, memory_dir: str = "chatbot_memory"):
+    def __init__(self, memory_dir: str = "chatbot_memory", auto_cleanup: bool = True, vector_service=None):
         self.memory_dir = memory_dir
         self.current_session_id = None
         self.conversations_file = os.path.join(memory_dir, "conversations.json")
+        self.auto_cleanup = auto_cleanup
+        self._cleanup_registered = False
+        self.vector_service = vector_service
         
         os.makedirs(memory_dir, exist_ok=True)
         self.conversations = self._load_conversations()
@@ -37,6 +43,11 @@ class MemoryManager:
             st.session_state.current_conversation = None
         if 'conversation_history' not in st.session_state:
             st.session_state.conversation_history = []
+        
+        # Register cleanup handlers if auto_cleanup is enabled
+        if self.auto_cleanup and not self._cleanup_registered:
+            self._register_cleanup_handlers()
+            self._cleanup_registered = True
     
     def _load_conversations(self) -> Dict[str, Conversation]:
         """Load conversations from disk"""
@@ -123,20 +134,53 @@ class MemoryManager:
         
         # Save to disk
         self._save_conversations()
+        
+        # Store context in vector store
+        if self.vector_service and self.current_session_id:
+            try:
+                # Create context string from recent messages
+                recent_messages = self.conversations[self.current_session_id].messages[-5:] if len(self.conversations[self.current_session_id].messages) > 5 else self.conversations[self.current_session_id].messages
+                context_string = ""
+                for msg in recent_messages:
+                    context_string += f"{msg.role.capitalize()}: {msg.content}\n"
+                
+                if context_string.strip():
+                    self.vector_service.add_context_to_vectorstore(
+                        session_id=self.current_session_id,
+                        conversation_context=context_string.strip()
+                    )
+            except Exception as e:
+                print(f"Error storing context in vector store: {e}")
     
     def get_conversation_context(self, max_messages: int = 10) -> str:
-        """Get recent conversation context for the LLM"""
-        if not self.current_session_id or self.current_session_id not in self.conversations:
+        """Get recent conversation context for the LLM from vector store"""
+        if not self.current_session_id:
             return ""
         
-        messages = self.conversations[self.current_session_id].messages
-        recent_messages = messages[-max_messages:] if len(messages) > max_messages else messages
+        # Try to get context from vector store first
+        if self.vector_service:
+            try:
+                vector_context = self.vector_service.get_context_summary(
+                    session_id=self.current_session_id, 
+                    max_contexts=max_messages
+                )
+                if vector_context:
+                    return vector_context
+            except Exception as e:
+                print(f"Error getting vector context: {e}")
         
-        context = "Previous conversation context:\n"
-        for msg in recent_messages:
-            context += f"{msg.role.capitalize()}: {msg.content}\n"
+        # Fallback to traditional memory if vector store fails
+        if self.current_session_id in self.conversations:
+            messages = self.conversations[self.current_session_id].messages
+            recent_messages = messages[-max_messages:] if len(messages) > max_messages else messages
+            
+            context = "Previous conversation context:\n"
+            for msg in recent_messages:
+                context += f"{msg.role.capitalize()}: {msg.content}\n"
+            
+            return context
         
-        return context
+        return ""
     
     def get_conversation_summary(self) -> str:
         """Get a summary of the current conversation"""
@@ -249,3 +293,38 @@ class MemoryManager:
             'current_session_id': self.current_session_id,
             'memory_file_size': os.path.getsize(self.conversations_file) if os.path.exists(self.conversations_file) else 0
         }
+    
+    def _register_cleanup_handlers(self):
+        """Register cleanup handlers for automatic memory cleanup"""
+        def cleanup_handler(signum=None, frame=None):
+            """Cleanup function to be called on exit"""
+            try:
+                if self.current_session_id:
+                    print(f"[AUTO-CLEANUP] Cleaning up session: {self.current_session_id}")
+                    self.clear_current_conversation()
+            except Exception as e:
+                print(f"[AUTO-CLEANUP] Error during cleanup: {e}")
+        
+        # Register for various exit signals
+        atexit.register(cleanup_handler)
+        
+        # Register signal handlers for graceful shutdown
+        try:
+            signal.signal(signal.SIGTERM, cleanup_handler)
+            signal.signal(signal.SIGINT, cleanup_handler)
+        except (OSError, ValueError):
+            # Some signals might not be available on all platforms
+            pass
+    
+    def cleanup_on_tab_close(self):
+        """Explicitly cleanup current session (can be called from frontend)"""
+        if self.current_session_id:
+            print(f"[TAB-CLOSE] Cleaning up session: {self.current_session_id}")
+            self.clear_current_conversation()
+    
+    def set_auto_cleanup(self, enabled: bool):
+        """Enable or disable automatic cleanup"""
+        self.auto_cleanup = enabled
+        if enabled and not self._cleanup_registered:
+            self._register_cleanup_handlers()
+            self._cleanup_registered = True

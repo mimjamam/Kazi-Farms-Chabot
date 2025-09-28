@@ -25,6 +25,10 @@ class Settings:
     TOP_K = 5
     CONFIDENCE_THRESHOLD = 25  # Accept answers >= 25% confidence
     
+    # Memory Management Settings
+    AUTO_CLEANUP_ENABLED = True  # Enable automatic memory cleanup on tab close
+    SESSION_TIMEOUT_MINUTES = 30  # Session timeout in minutes for auto-cleanup
+    
     # Prompt Template
     CUSTOM_PROMPT_TEMPLATE = """
     You are the official Kazifarm assistant. Your role is to provide accurate, helpful information based ONLY on the provided context from Kazifarm's internal documents.

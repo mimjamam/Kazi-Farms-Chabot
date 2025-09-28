@@ -15,6 +15,7 @@ class VectorStoreService:
         self.settings = Settings()
         self.vectorstore = None
         self.embedding_model = None
+        self.context_vectorstore = None
     
     def load_vectorstore(self):
         self.embedding_model = HuggingFaceEmbeddings(
@@ -60,6 +61,90 @@ class VectorStoreService:
                 seen.add(doc.page_content)
         
         return unique_hits[:top_k]
+    
+    def initialize_context_vectorstore(self):
+        """Initialize a separate vector store for conversation context"""
+        if self.embedding_model is None:
+            self.embedding_model = HuggingFaceEmbeddings(
+                model_name=self.settings.EMBEDDING_MODEL
+            )
+        
+        # Create a new empty vector store for context
+        from langchain_core.documents import Document
+        self.context_vectorstore = FAISS.from_documents([], self.embedding_model)
+        return self.context_vectorstore
+    
+    def add_context_to_vectorstore(self, session_id: str, conversation_context: str):
+        """Add conversation context to the vector store"""
+        if self.context_vectorstore is None:
+            self.initialize_context_vectorstore()
+        
+        from langchain_core.documents import Document
+        from datetime import datetime
+        
+        # Create document with context
+        doc = Document(
+            page_content=conversation_context,
+            metadata={
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat(),
+                "type": "conversation_context"
+            }
+        )
+        
+        # Add to context vector store
+        self.context_vectorstore.add_documents([doc])
+    
+    def search_context(self, query: str, session_id: str = None, top_k: int = 3):
+        """Search for relevant conversation context"""
+        if self.context_vectorstore is None:
+            return []
+        
+        try:
+            # Search for relevant context
+            results = self.context_vectorstore.similarity_search_with_score(query, k=top_k)
+            
+            # Filter by session_id if provided
+            if session_id:
+                filtered_results = []
+                for doc, score in results:
+                    if doc.metadata.get("session_id") == session_id:
+                        filtered_results.append((doc, score))
+                return filtered_results
+            
+            return results
+        except Exception as e:
+            print(f"Error searching context: {e}")
+            return []
+    
+    def get_context_summary(self, session_id: str = None, max_contexts: int = 5):
+        """Get a summary of conversation contexts"""
+        if self.context_vectorstore is None:
+            return ""
+        
+        try:
+            # Get recent contexts
+            if session_id:
+                # Search for contexts from this session
+                results = self.context_vectorstore.similarity_search("", k=max_contexts)
+                session_contexts = [doc for doc in results if doc.metadata.get("session_id") == session_id]
+            else:
+                # Get most recent contexts
+                results = self.context_vectorstore.similarity_search("", k=max_contexts)
+                session_contexts = results
+            
+            if not session_contexts:
+                return ""
+            
+            # Combine contexts
+            context_summary = "Recent conversation context:\n"
+            for i, doc in enumerate(session_contexts[-max_contexts:], 1):
+                context_summary += f"{i}. {doc.page_content[:200]}...\n"
+            
+            return context_summary
+        except Exception as e:
+            print(f"Error getting context summary: {e}")
+            return ""
 
 class ChatService:
     def __init__(self):
@@ -73,6 +158,7 @@ class ChatService:
     def initialize(self):
         self.settings.validate_config()
         self.vector_service.load_vectorstore()
+        self.vector_service.initialize_context_vectorstore()
     
     def _is_irrelevant_question(self, query: str) -> bool:
         """Determine if a query is irrelevant to Kazi Farms HR topics"""
@@ -193,6 +279,14 @@ class ChatService:
             top_hit = hits[0]
             context = top_hit[0].page_content
             
+            # Get additional context from vector store
+            vector_context = ""
+            if self.vector_service:
+                try:
+                    vector_context = self.vector_service.get_context_summary(max_contexts=3)
+                except Exception as e:
+                    print(f"Error getting vector context: {e}")
+            
             # Create a custom prompt with the highest confidence result
             # Enhanced prompt template with conversation context
             enhanced_template = f"""
@@ -200,6 +294,9 @@ class ChatService:
 
 Previous conversation context:
 {conversation_context}
+
+Vector store context:
+{vector_context}
 
 Current question: {{question}}
 Context: {{context}}
