@@ -1,0 +1,60 @@
+{
+  "session_20250925_114850": {
+    "session_id": "session_20250925_114850",
+    "messages": [
+      {
+        "role": "user",
+        "content": "hello",
+        "timestamp": "2025-09-25T11:48:50.544124",
+        "metadata": null
+      },
+      {
+        "role": "assistant",
+        "content": "Hello! I'm your Kazifarm assistant. I have information about our chicken products, pricing, delivery options, and more. What can I help you with?",
+        "timestamp": "2025-09-25T11:48:50.545926",
+        "metadata": {
+          "is_greeting": true
+        }
+      },
+      {
+        "role": "user",
+        "content": "location of kazi farms",
+        "timestamp": "2025-09-25T11:49:05.256485",
+        "metadata": null
+      },
+      {
+        "role": "assistant",
+        "content": "Kazi Farms is headquartered in Gazipur, Bangladesh.",
+        "timestamp": "2025-09-25T11:49:06.222239",
+        "metadata": null
+      },
+      {
+        "role": "user",
+        "content": "location of kazi farms headquater\n\n",
+        "timestamp": "2025-09-25T11:49:27.180848",
+        "metadata": null
+      },
+      {
+        "role": "assistant",
+        "content": "Kazi Farms’ head office is located in Gazipur, Bangladesh.",
+        "timestamp": "2025-09-25T11:49:27.863848",
+        "metadata": null
+      },
+      {
+        "role": "user",
+        "content": "salary",
+        "timestamp": "2025-09-25T11:49:36.475751",
+        "metadata": null
+      },
+      {
+        "role": "assistant",
+        "content": "**Proposed minimum salaries (selected entries):**\n\n- **Assistant Officer (Job Group 4)** – Proposed minimum: **Tk. 15,000** (appraisal‑eligible minimum Tk. 16,000).  \n- **Officer (Job Group 5)** – Proposed minimum: **Tk. 18,000**.  \n\nOther positions follow similar market‑adjusted minimums as outlined in the revision proposal.",
+        "timestamp": "2025-09-25T11:49:37.208378",
+        "metadata": null
+      }
+    ],
+    "created_at": "2025-09-25T11:48:50.543962",
+    "last_updated": "2025-09-25T11:49:37.208388",
+    "summary": null
+  }
+}
