@@ -52,3 +52,6 @@ Thumbs.db
 
 # FAISS index files (can be regenerated)
 core/data/faiss_index/
+
+# Core data directory (contains sensitive documents)
+core/data/
