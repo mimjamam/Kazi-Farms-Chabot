@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="api-base-url" content="http://localhost:8000">
+    <meta name="description" content="Kazi Farms HR Assistant - Get instant answers to your HR questions">
+    <title>Kazi Farms HR Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Chat Button */
+        .chat-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 4px 30px rgba(99, 102, 241, 0.8);
+            }
+        }
+
+        .chat-button:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 6px 30px rgba(99, 102, 241, 0.7);
+            animation: none;
+        }
+
+        .chat-button:active {
+            transform: scale(0.95);
+        }
+
+        .chat-button svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: #f1f5f9;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(10px) scale(0.9);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: 250px;
+            pointer-events: none;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            animation: tooltipBounce 0.5s ease-out;
+        }
+
+        @keyframes tooltipBounce {
+            0% {
+                transform: translateY(10px) scale(0.9);
+            }
+
+            50% {
+                transform: translateY(-5px) scale(1.05);
+            }
+
+            100% {
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Chat Window */
+        .chat-window {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 400px;
+            min-height: 400px;
+            max-height: calc(100vh - 120px);
+            height: auto;
+            background-color: #1e293b;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .chat-window.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+            animation: windowSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes windowSlideIn {
+            0% {
+                opacity: 0;
+                transform: translateY(30px) scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Chat Header */
+        .chat-header {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 16px 16px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-avatar svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .chat-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .close-button {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .close-button:hover {
+            background-color: rgba(239, 68, 68, 0.8);
+            transform: scale(1.1) rotate(90deg);
+        }
+
+        .close-button:active {
+            transform: scale(0.9);
+        }
+
+        /* Messages Container */
+        .messages-container {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background-color: #0f172a;
+            min-height: 200px;
+            max-height: calc(100vh - 300px);
+        }
+
+        .messages-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Message Styles */
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 85%;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .message.bot .message-avatar {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        }
+
+        .message.user .message-avatar {
+            background-color: #334155;
+        }
+
+        .message-avatar svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+
+        .message.user .message-avatar svg {
+            fill: #94a3b8;
+        }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            animation: messageSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.bot .message-content {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .message.user .message-content {
+            background-color: #334155;
+            color: #f1f5f9;
+            border: 1px solid #475569;
+        }
+
+        /* Starter Prompts */
+        .starter-prompts {
+            padding: 0 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background-color: #0f172a;
+        }
+
+        .starter-prompt {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: left;
+            color: #cbd5e1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .starter-prompt::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .starter-prompt:hover::before {
+            left: 100%;
+        }
+
+        .starter-prompt:hover {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border-color: #6366f1;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+            transform: translateX(4px);
+        }
+
+        .starter-prompt:active {
+            transform: scale(0.98);
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 16px 20px;
+            border-top: 1px solid #334155;
+            background-color: #1e293b;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .message-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #475569;
+            border-radius: 24px;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            max-height: 100px;
+            min-height: 44px;
+            font-family: inherit;
+            background-color: #0f172a;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #f1f5f9;
+        }
+
+        .message-input::placeholder {
+            color: #64748b;
+        }
+
+        .message-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+            background-color: #1e293b;
+            transform: translateY(-1px);
+        }
+
+        .send-button {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .send-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .send-button:hover:not(:disabled)::before {
+            width: 100px;
+            height: 100px;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.6);
+        }
+
+        .send-button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .send-button:disabled {
+            background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .send-button svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        /* Loading Animation */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            align-items: center;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.7;
+            }
+
+            30% {
+                transform: translateY(-10px) scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        /* Smooth scroll behavior */
+        .messages-container {
+            scroll-behavior: smooth;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .chat-window {
+                width: calc(100vw - 20px);
+                min-height: 300px;
+                max-height: calc(100vh - 100px);
+                height: auto;
+                right: 10px;
+                bottom: 80px;
+            }
+
+            .messages-container {
+                min-height: 150px;
+                max-height: calc(100vh - 250px);
+            }
+
+            .chat-button {
+                right: 15px;
+                bottom: 15px;
+            }
+
+            .tooltip {
+                right: 15px;
+                bottom: 85px;
+                max-width: calc(100vw - 100px);
+            }
+
+            .message {
+                max-width: 90%;
+            }
+        }
+
+        @media (max-width: 768px) and (min-width: 481px) {
+            .chat-window {
+                width: 380px;
+                min-height: 350px;
+                max-height: calc(100vh - 110px);
+            }
+
+            .messages-container {
+                max-height: calc(100vh - 280px);
+            }
+        }
+
+        /* Citation Links */
+        .inline-citation {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.15);
+            text-decoration: none;
+            font-weight: 600;
+            margin-left: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            display: inline-block;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .inline-citation::before {
+            content: '📄';
+            margin-right: 4px;
+            font-size: 10px;
+        }
+
+        .inline-citation:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .inline-citation:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        /* For user messages (different background) */
+        .message.user .inline-citation {
+            color: #a5b4fc;
+            background-color: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+
+        .message.user .inline-citation:hover {
+            background-color: rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Debug info styling */
+        .debug-info {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 8px;
+            padding: 6px 8px;
+            background-color: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #334155;
+        }
+
+        /* References section styling */
+        .references-section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .references-section strong {
+            color: #ffffff;
+            font-size: 13px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .reference-link {
+            color: #a5b4fc;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background-color: rgba(99, 102, 241, 0.15);
+            transition: all 0.2s ease;
+            font-size: 11px;
+        }
+
+        .reference-link:hover {
+            background-color: rgba(99, 102, 241, 0.3);
+            color: #c7d2fe;
+            transform: translateX(2px);
+        }
+
+        /* For user messages */
+        .message.user .references-section {
+            border-top-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .message.user .reference-link {
+            color: #93c5fd;
+            background-color: rgba(59, 130, 246, 0.15);
+        }
+
+        .message.user .reference-link:hover {
+            background-color: rgba(59, 130, 246, 0.3);
+            color: #bfdbfe;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Chat Button -->
+    <button class="chat-button" id="chatButton">
+        <svg viewBox="0 0 24 24">
+            <path
+                d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3.04 1.05 4.39L1 22l5.61-2.05C8.96 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm2.07-7.75l-.9.92C11.45 10.9 11 11.5 11 13h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H6c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z" />
+        </svg>
+    </button>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip">
+        Hello 👋 I'm your HR Assistant. Click to start chatting!
+    </div>
+
+    <!-- Chat Window -->
+    <div class="chat-window" id="chatWindow">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="chat-avatar">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+            </div>
+            <div class="chat-title">Kazi Farms HR Assistant</div>
+            <button class="close-button" id="closeButton">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Messages Container -->
+        <div class="messages-container" id="messagesContainer">
+            <!-- Welcome message will be added here -->
+        </div>
+
+        <!-- Starter Prompts -->
+        <div class="starter-prompts" id="starterPrompts">
+            <div class="starter-prompt" data-prompt="What is the salary structure?">💰 Salary structure</div>
+            <div class="starter-prompt" data-prompt="Tell me about leave policies">🏖️ Leave policies</div>
+            <div class="starter-prompt" data-prompt="What are the allowances?">💵 Allowances</div>
+            <div class="starter-prompt" data-prompt="Late attendance policy">⏰ Attendance policy</div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="input-container">
+                <textarea class="message-input" id="messageInput" placeholder="Type your HR question here..."
+                    rows="1"></textarea>
+            </div>
+            <button class="send-button" id="sendButton">
+                <svg viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Kazi Farms HR Assistant Chatbot
+         * 
+         * Configuration:
+         * - API Base URL is set via meta tag or defaults to network IP
+         * - To change the API URL, update the meta tag "api-base-url" in the HTML head
+         * - Or modify the getBaseUrl() method below
+         * 
+         * Features:
+         * - Real-time chat with Kazi Farms HR knowledge base
+         * - PDF citation links for source documents
+         * - Responsive design for mobile and desktop
+         * - Auto-retry on network errors
+         * - Typing indicators and smooth animations
+         */
+
+        class KaziFarmsChatbot {
+            constructor() {
+                // Configuration
+                this.baseUrl = this.getBaseUrl();
+                this.apiUrl = `${this.baseUrl}/chat`;
+                this.isOpen = false;
+                this.isLoading = false;
+                this.debugMode = false; // Set to true to show debug info
+                this.retryCount = 0;
+                this.maxRetries = 3;
+
+                this.initializeElements();
+                this.bindEvents();
+                this.showTooltip();
+                this.loadWelcomeMessage();
+            }
+
+            getBaseUrl() {
+                // Try to get base URL from meta tag (set by server) or use default
+                const metaBaseUrl = document.querySelector('meta[name="api-base-url"]');
+                if (metaBaseUrl && metaBaseUrl.content) {
+                    return metaBaseUrl.content;
+                }
+
+                // Fallback: Check hostname
+                const hostname = window.location.hostname;
+
+                // If running locally
+                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                    return 'http://localhost:8000';
+                }
+
+                // For network deployment - matches FASTAPI_BASE_URL from .env
+                return 'http://172.16.9.151:8000';
+            }
+
+            initializeElements() {
+                // Get all required elements and validate they exist
+                const requiredElements = {
+                    chatButton: 'chatButton',
+                    tooltip: 'tooltip',
+                    chatWindow: 'chatWindow',
+                    closeButton: 'closeButton',
+                    messagesContainer: 'messagesContainer',
+                    starterPrompts: 'starterPrompts',
+                    messageInput: 'messageInput',
+                    sendButton: 'sendButton'
+                };
+
+                for (const [property, elementId] of Object.entries(requiredElements)) {
+                    const element = document.getElementById(elementId);
+                    if (!element) {
+                        throw new Error(`Required element with ID '${elementId}' not found`);
+                    }
+                    this[property] = element;
+                }
+            }
+
+            bindEvents() {
+                this.chatButton.addEventListener('click', () => this.toggleChat());
+                this.closeButton.addEventListener('click', () => this.closeChat());
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Auto-resize textarea
+                this.messageInput.addEventListener('input', () => {
+                    this.messageInput.style.height = 'auto';
+                    this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 100) + 'px';
+                    this.adjustChatWindowHeight();
+                });
+
+                // Prevent form submission on Enter in textarea
+                this.messageInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                    }
+                });
+
+                // Starter prompts
+                this.starterPrompts.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('starter-prompt')) {
+                        const prompt = e.target.getAttribute('data-prompt');
+                        this.messageInput.value = prompt;
+                        this.sendMessage();
+                    }
+                });
+
+                // Hide tooltip when chat opens
+                this.chatButton.addEventListener('mouseenter', () => {
+                    if (!this.isOpen) this.showTooltip();
+                });
+
+                this.chatButton.addEventListener('mouseleave', () => {
+                    this.hideTooltip();
+                });
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    if (this.isOpen) {
+                        this.adjustChatWindowHeight();
+                    }
+                });
+            }
+
+            showTooltip() {
+                setTimeout(() => {
+                    if (!this.isOpen) {
+                        this.tooltip.classList.add('show');
+                    }
+                }, 1000);
+            }
+
+            hideTooltip() {
+                this.tooltip.classList.remove('show');
+            }
+
+            toggleChat() {
+                if (this.isOpen) {
+                    this.closeChat();
+                } else {
+                    this.openChat();
+                }
+            }
+
+            openChat() {
+                this.isOpen = true;
+                this.chatWindow.classList.add('open');
+                this.hideTooltip();
+                this.messageInput.focus();
+                this.adjustChatWindowHeight();
+            }
+
+            closeChat() {
+                this.isOpen = false;
+                this.chatWindow.classList.remove('open');
+            }
+
+            async loadWelcomeMessage() {
+                // Just show the welcome message directly without API call
+                this.addFallbackWelcomeMessage();
+            }
+
+            addFallbackWelcomeMessage() {
+                const welcomeMessage = `Hello! 👋 I'm the Kazi Farms HR Assistant.
+
+I can help you with:
+• Salary structures and allowances
+• Leave policies and applications
+• Employee benefits
+• Attendance policies
+• HR procedures
+
+Ask me anything about Kazi Farms HR policies!`;
+                this.addMessage(welcomeMessage, 'bot');
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message || this.isLoading) return;
+
+                // Add user message
+                this.addMessage(message, 'user');
+                this.messageInput.value = '';
+                this.messageInput.style.height = 'auto';
+
+                // Hide starter prompts after first message
+                this.starterPrompts.style.display = 'none';
+
+                // Show loading
+                this.setLoading(true);
+                const loadingMessage = this.addLoadingMessage();
+
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+                    const response = await fetch(this.apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message }),
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    // Remove loading message
+                    this.removeMessage(loadingMessage);
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('API Response:', data); // Debug log
+
+                        // Validate response data
+                        if (data && data.response) {
+                            this.addMessage(data.response, 'bot');
+                            this.retryCount = 0; // Reset retry count on success
+                        } else {
+                            throw new Error('Invalid response format');
+                        }
+                    } else {
+                        let errorMessage = 'Please try again.';
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.detail || errorData.message || errorMessage;
+                        } catch (e) {
+                            // If error response is not JSON, use default message
+                        }
+                        this.addMessage(`Sorry, I encountered an error: ${errorMessage}`, 'bot');
+                    }
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    this.removeMessage(loadingMessage);
+
+                    // Check for network connectivity first
+                    if (this.handleNetworkError()) {
+                        return;
+                    }
+
+                    let errorMessage = 'Sorry, I\'m having trouble connecting. Please check your internet connection and try again.';
+
+                    if (error.name === 'AbortError') {
+                        errorMessage = 'Request timed out. Please try again with a shorter message.';
+                    } else if (error.message === 'Invalid response format') {
+                        errorMessage = 'Received an invalid response from the server. Please try again.';
+                    } else if (error.message.includes('Failed to fetch')) {
+                        errorMessage = 'Unable to connect to the server. Please check if the service is running.';
+                    }
+
+                    this.addMessage(errorMessage, 'bot');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+
+                if (sender === 'bot') {
+                    avatar.innerHTML = `
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    `;
+                } else {
+                    avatar.innerHTML = `
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                    `;
+                }
+
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+
+                // Always render as HTML to support citations and formatting
+                messageContent.innerHTML = this.sanitizeAndFormatContent(content);
+
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(messageContent);
+
+                this.messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+
+                // Adjust window height after adding message
+                setTimeout(() => this.adjustChatWindowHeight(), 150);
+
+                return messageDiv;
+            }
+
+            sanitizeAndFormatContent(content) {
+                if (!content || typeof content !== 'string') {
+                    return 'Sorry, I received an invalid response.';
+                }
+
+                // Basic HTML sanitization - remove potentially dangerous tags
+                let sanitized = content
+                    .replace(/<script[^>]*>.*?<\/script>/gi, '')
+                    .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
+                    .replace(/<object[^>]*>.*?<\/object>/gi, '')
+                    .replace(/<embed[^>]*>/gi, '')
+                    .replace(/javascript:/gi, '')
+                    .replace(/on\w+\s*=/gi, ''); // Remove inline event handlers
+
+                // Remove markdown bold formatting (**text**)
+                sanitized = sanitized.replace(/\*\*([^*]+)\*\*/g, '$1');
+
+                // Remove markdown italic formatting (*text* or _text_)
+                sanitized = sanitized.replace(/\*([^*]+)\*/g, '$1');
+                sanitized = sanitized.replace(/_([^_]+)_/g, '$1');
+
+                // Convert newlines to <br> tags for proper formatting
+                let formattedContent = sanitized.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+
+                // Ensure citation links are properly formatted and safe
+                formattedContent = formattedContent.replace(
+                    /<a href="([^"]*)" target="_blank" class="inline-citation">(\[[^\]]+\])<\/a>/g,
+                    '<a href="$1" target="_blank" rel="noopener noreferrer" class="inline-citation" title="View source document">$2</a>'
+                );
+
+                // Format bullet points if they exist
+                formattedContent = formattedContent.replace(/^• /gm, '&nbsp;&nbsp;• ');
+                formattedContent = formattedContent.replace(/^- /gm, '&nbsp;&nbsp;• ');
+
+                return formattedContent;
+            }
+
+            createDebugInfo(data) {
+                if (!this.debugMode) return null;
+
+                const sources = data.sources || [];
+                const hasCitations = data.response && data.response.includes('<a href=');
+                const citationCount = hasCitations ? (data.response.match(/\[/g) || []).length : 0;
+
+                let debugHtml = '<div class="debug-info">';
+                debugHtml += `<strong>🔍 Debug Info:</strong><br>`;
+                debugHtml += `• Sources found: ${sources.length}<br>`;
+                debugHtml += `• Citations in response: ${citationCount}<br>`;
+                debugHtml += `• Is relevant: ${data.is_relevant}<br>`;
+                debugHtml += `• Session ID: ${data.session_id}<br>`;
+
+                if (sources.length > 0) {
+                    debugHtml += `• Source titles: ${sources.map(s => s.title || 'Unknown').join(', ')}<br>`;
+                }
+
+                if (hasCitations) {
+                    debugHtml += `• ✅ Citations detected in response<br>`;
+                } else {
+                    debugHtml += `• ❌ No citations found in response<br>`;
+                }
+
+                debugHtml += '</div>';
+
+                return debugHtml;
+            }
+
+            addLoadingMessage() {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message bot';
+
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.innerHTML = `
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                `;
+
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+                messageContent.innerHTML = `
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                `;
+
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(messageContent);
+
+                this.messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+
+                return messageDiv;
+            }
+
+            removeMessage(messageElement) {
+                if (messageElement && messageElement.parentNode) {
+                    messageElement.parentNode.removeChild(messageElement);
+                }
+            }
+
+            // Handle network connectivity issues
+            handleNetworkError() {
+                if (!navigator.onLine) {
+                    this.addMessage('You appear to be offline. Please check your internet connection and try again.', 'bot');
+                    return true;
+                }
+                return false;
+            }
+
+            setLoading(loading) {
+                this.isLoading = loading;
+                this.sendButton.disabled = loading;
+                this.messageInput.disabled = loading;
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                    this.adjustChatWindowHeight();
+                }, 100);
+            }
+
+            adjustChatWindowHeight() {
+                // Calculate optimal height based on content
+                const headerHeight = this.chatHeader.offsetHeight;
+                const inputAreaHeight = this.inputArea.offsetHeight;
+                const starterPromptsHeight = this.starterPrompts.offsetHeight;
+                const messagesHeight = this.messagesContainer.scrollHeight;
+
+                // Calculate total needed height
+                const totalContentHeight = headerHeight + messagesHeight + inputAreaHeight + starterPromptsHeight + 40; // 40px for padding
+
+                // Set constraints
+                const minHeight = 400;
+                const maxHeight = window.innerHeight - 120; // Leave space from viewport edges
+
+                // Calculate optimal height
+                let optimalHeight = Math.min(Math.max(totalContentHeight, minHeight), maxHeight);
+
+                // Apply height with smooth transition
+                this.chatWindow.style.height = `${optimalHeight}px`;
+            }
+        }
+
+        // Initialize chatbot when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                new KaziFarmsChatbot();
+            } catch (error) {
+                console.error('Failed to initialize chatbot:', error);
+                // Fallback: show a simple error message
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #ff4444;
+                    color: white;
+                    padding: 10px 15px;
+                    border-radius: 5px;
+                    z-index: 9999;
+                    font-family: Arial, sans-serif;
+                    font-size: 14px;
+                `;
+                errorDiv.textContent = 'Chatbot failed to initialize. Please refresh the page.';
+                document.body.appendChild(errorDiv);
+
+                // Auto-remove error message after 5 seconds
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+
+</html>

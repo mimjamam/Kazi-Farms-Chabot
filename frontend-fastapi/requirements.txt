@@ -1,0 +1,19 @@
+# Kazi Farms Frontend-FastAPI Requirements
+# Core dependencies
+streamlit>=1.28.0
+requests>=2.31.0
+
+# Optional dependencies for enhanced functionality
+python-dotenv>=1.0.0  # For environment variable management
+pydantic>=2.0.0      # For data validation (if needed)
+pathlib2>=2.3.7      # For path handling (Python < 3.4 compatibility)
+
+# Development dependencies (optional)
+pytest>=7.0.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+
+# Performance monitoring (optional)
+psutil>=5.9.0        # For system monitoring
+memory-profiler>=0.60.0  # For memory profiling
