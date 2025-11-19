@@ -72,7 +72,7 @@ This chatbot is specifically designed to handle HR-related queries, company poli
 │                         Frontend Layer                          │
 │  ┌─────────────────┐              ┌─────────────────┐           │
 │  │  Streamlit UI   │              │   HTML/CSS UI   │           │
-│  └────────┬────────┘              └──────┬────────--┘           │
+│  └────────┬────────┘              └──────┬──────────┘           │
 └───────────┼──────────────────────────────┼──────────────────────┘
             │                              │
             ▼                              ▼
